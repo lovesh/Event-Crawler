@@ -1,0 +1,6 @@
+package crawler
+
+
+object EventStore {
+
+}
