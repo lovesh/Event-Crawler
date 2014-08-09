@@ -10,8 +10,8 @@ case class HTTPResponse(code: Int, body: String, url: URL)
 
 object HTTPRequest {
 	val options = Map(
-		"connTimeout" -> 5000,
-		"readTimeout" -> 5000
+		"connTimeout" -> 20000,
+		"readTimeout" -> 20000
 	)
 	
 	private def makeOptionList(options: Map[String, Any]): List[HttpOptions.HttpOption] = {

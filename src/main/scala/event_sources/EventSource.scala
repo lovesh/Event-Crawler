@@ -6,7 +6,7 @@ import crawler._
 
 trait EventSource {
   def sourceNo: Int
-  def typ: Int
+  def `type`: Int
   def baseUrl: URL
   protected def getRequestUrl(url: URL, args: Map[String, String]): URL
   def getRawEvents(args: Any*): List[Map[String, Any]]
