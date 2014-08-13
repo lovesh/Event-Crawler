@@ -19,6 +19,7 @@ case class NormalizedEvent(fields: Map[String, Any]) {
   val all_day = fields("all_day").asInstanceOf[Boolean]
   val source = fields("source").asInstanceOf[String]
   val id = fields("id").asInstanceOf[String]
+  val source_id = fields("source_id").asInstanceOf[String]
   val source_url = fields("source_url").asInstanceOf[URL]
   val ticket_link = fields("ticket_link").asInstanceOf[URL]
   val image_url = fields("image_url").asInstanceOf[URL]
@@ -38,8 +39,8 @@ case class NormalizedEvent(fields: Map[String, Any]) {
       loc += ("country"-> fields("country").asInstanceOf[String])
     if (fields.contains("city"))
       loc += ("city"-> fields("city").asInstanceOf[String])
-    if (fields.contains("venue_name"))
-      loc += ("name"-> fields("venue_name").asInstanceOf[String])
+    if (fields.contains("location_name"))
+      loc += ("name"-> fields("location_name").asInstanceOf[String])
     else if (fields.contains("address"))
       loc += ("name"-> fields("address").asInstanceOf[String])
     if (fields.contains("latitude")) {

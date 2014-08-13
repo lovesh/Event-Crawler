@@ -3,7 +3,8 @@ package crawler
 
 import scalaj.http._
 import java.net.URL
-
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 
 case class HTTPResponse(code: Int, body: String, url: URL)
 
@@ -42,5 +43,11 @@ object HTTPRequest {
 		val request: Http.Request = Http.post(url.toString).options(optionList).params(requestParams)
 		makeResponse(request)
 	}
+
+  def getJSON(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map()): JValue = {
+    implicit val formats = DefaultFormats
+    val response = get(url, params, options)
+    parse(response.body)
+  }
 	
 }

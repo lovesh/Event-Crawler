@@ -6,7 +6,32 @@ import crawler._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import com.github.nscala_time.time.Imports._
+import java.util.Locale
 
+
+private case class EventfulLink(url: String, `type`: String)
+
+private case class EventfulCategory(id: String, name: String)
+
+private case class EventfulEvent(
+          id: String,
+          title: String,
+          description: Option[String],
+          olson_path: Option[String],
+          start_time: String,
+          stop_time: Option[String],
+          created: String,
+          modified: String,
+          address: Option[String],
+          venue_name: Option[String],
+          latitude: Option[String],
+          longitude: Option[String],
+          city: Option[String],
+          country: Option[String],
+          url: String,
+          all_day: Option[String],
+          price: Option[String]
+          )
 
 class Eventful extends EventSource {
   val sourceNo = 6
@@ -19,37 +44,12 @@ class Eventful extends EventSource {
 
   implicit val formats = DefaultFormats
 
-  case class Link(url: String, `type`: String)
-
-  case class Category(id: String, name: String)
-
-  case class Event(
-              id: String,
-              title: String,
-              description: Option[String],
-              olson_path: Option[String],
-              start_time: String,
-              stop_time: Option[String],
-              created: String,
-              modified: String,
-              address: Option[String],
-              venue_name: Option[String],
-              latitude: Option[String],
-              longitude: Option[String],
-              city: Option[String],
-              country: Option[String],
-              url: String,
-              all_day: Option[String],
-              price: Option[String]
-          )
-
-
   protected def getRequestUrl(url: URL, args: Map[String, String] = Map()): URL = {
     val queryString = (args + ("app_key"-> appKey)).map({ case(k,v) => s"$k=$v"}).mkString("&")
-    val pattern = ".+?.+".r
-    val separator = url.toString match {
-      case pattern(q) => "&"
-      case _ => "?"
+    val pattern = raw"\?.+".r
+    val separator = pattern findFirstIn url.toString match {
+      case Some(x) => "&"
+      case None => "?"
     }
     new URL(url.toString + separator + queryString)
   }
@@ -58,12 +58,12 @@ class Eventful extends EventSource {
     val url = getRequestUrl(categoryUrl)
     val resp = HTTPRequest.get(url)
     val json = parse(resp.body)
-    val lst: List[(String, String)] = for {
+    val categories: List[(String, String)] = for {
       JObject(catList) <- json
       JField("id", JString(id))  <- catList
       JField("name", JString(name))  <- catList
     } yield (id, name)
-    lst.toMap
+    categories.toMap
   }
 
   def getEventsSummaryFromSearchPage(json: JValue): List[Map[String, Any]] = {
@@ -81,17 +81,20 @@ class Eventful extends EventSource {
   }
 
   def getEventDetailFromEventPage(json: JValue): Map[String, Any] = {
-    val event = json.extract[Event]
+    val event = json.extract[EventfulEvent]
     val link = (json \\ "link").values
     val category = (json \\ "category").values
     val image = (json \\ "image").values
 
     val ticketLink = link match {
-      case l: Map[String, String] if l("type") == "Tickets" => l("url")
+      case l: Map[String, String] if l.contains("type") && (l("type") == "Tickets") => l("url")
       case l: List[Map[String, String]] =>
         l.filter({
-          case m: Map[String, String]=> m("type") == "Tickets"
-        })(0)("url")
+          case m: Map[String, String]=> m.contains("type") && m("type") == "Tickets"
+        }) match {
+          case List() => null
+          case head :: tail => head("url")
+        }
       case _ => null
     }
 
@@ -123,9 +126,9 @@ class Eventful extends EventSource {
 
   def getEventsOfCategory(catId: String): List[Map[String, Any]] = {
     val url = getRequestUrl(eventSearchUrl, Map("c"-> catId))
-    val json = parse(HTTPRequest.get(url).body)
+    val resp = HTTPRequest.get(url).body
+    val json = parse(resp)
     var eventsSummary = getEventsSummaryFromSearchPage(json)
-    println(eventsSummary)
     val pageCount = (json \\ "page_count").values.toString.toInt
     if (pageCount > 1) {
       var i = 2
@@ -153,16 +156,25 @@ class Eventful extends EventSource {
     events
   }
 
+  private val countryCodes: Map[String, String] = {
+    (Locale.getISOCountries() map {
+      case code: String =>
+        val l = new Locale("", code)
+        (l.getDisplayCountry(), code)
+    }).toMap
+  }
+
   protected def normalizeEvent(eventData: Map[String, Any]): NormalizedEvent = {
     var fields: Map[String, Any] = Map(
                                     "title"-> eventData("title"),
                                     "description"-> eventData("description"),
                                     "source"-> "eventful",
                                     "id"-> eventData("id"),
+                                    "source_id"-> (sourceNo.toString + ":" + eventData("id").toString),
                                     "source_url"-> new URL(eventData("url").toString),
                                     "timezone"-> (eventData("timezone") match {case "" => "UTC"; case t => t}),
                                     "categories"-> eventData("categories"),
-                                    "display_price"-> eventData("price")
+                                    "display_price"-> (eventData("price") match {case "" => "free"; case t => t})
                                     )
 
     val dateParser = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss").withZone(DateTimeZone.forID(fields("timezone").toString))
@@ -173,12 +185,14 @@ class Eventful extends EventSource {
     fields += ("all_day"-> (eventData("all_day") match {case "true" => true; case o => false}))
     fields += ("image_url"-> (eventData("image_url") match {case null => null; case s: String => new URL(s)}))
     fields += ("ticket_link"-> (eventData("ticket_link") match {case null => null; case s: String => new URL(s)}))
-
-    NormalizedEvent(eventData)
-  }
-
-  def getEvents(args: Any): List[NormalizedEvent] = {
-    getRawEvents().map { e: Map[String, Any] => normalizeEvent(e) }
+    fields += (
+      "country"-> (eventData("country") match {case "" => null; case c: String if countryCodes.contains(c) => countryCodes(c); case c: Any => c}),
+      "city"-> (eventData("city") match {case "" => null; case c: String => c}),
+      "location_name"-> (eventData("venue_name") match {case "" => null; case l: String => l}),
+      "latitude"-> (try { Some(eventData("latitude").toString.toDouble);eventData("latitude").toString.toDouble; } catch { case _ => null }),
+      "longitude"-> (try { Some(eventData("longitude").toString.toDouble);eventData("longitude").toString.toDouble; } catch { case _ => null })
+      )
+    NormalizedEvent(fields)
   }
 }
 
