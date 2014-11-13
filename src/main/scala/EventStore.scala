@@ -6,6 +6,7 @@ import com.mongodb.casbah.commons.conversions.scala._
 
 
 object EventStore {
+  // Data store for storing the normalized events, events which the app interacts with
   RegisterJodaTimeConversionHelpers()
   val connection = MongoClient(Constants.eventDBConfig.host, Constants.eventDBConfig.port)
   val db = connection(Constants.eventDBConfig.dbName)
@@ -30,6 +31,7 @@ object EventStore {
 
 
 object EventSourceStore {
+  // Data store for storing the events from various sources
   val connection = MongoClient(Constants.eventSourceDBConfig.host, Constants.eventSourceDBConfig.port)
   val db = connection(Constants.eventSourceDBConfig.dbName)
   val coll = db(Constants.eventSourceDBConfig.collName)

@@ -113,6 +113,7 @@ class Meetup extends EventSource {
     events = events filter {
       ev: MeetupEvent => EventStore.hasEventChanged("meetup", ev.id, new DateTime(ev.updated))
     }
+    println("Got %d events for cat id %s".format(events.size, catId))
     events map {event =>
       (Map[String, Any]("categories"-> List(catName)) /: event.getClass.getDeclaredFields) {(a, f) =>
         f.setAccessible(true)
@@ -132,11 +133,14 @@ class Meetup extends EventSource {
 
   def getRawEvents(args: Any*): List[Map[String, Any]] = {
     val categories = getAllCategories()
+    println("Got %d categories".format(categories.size))
     var events = List[Map[String, Any]]()
     var cities = EventSourceStore.getMeetupCityNames("in")
     if (cities.length == 0) {
+      // Considering events of india only
       storeCitiesOfCountry("in")
       cities = EventSourceStore.getMeetupCityNames("in")
+      println("Got %d cities".format(cities.size))
     }
     cities foreach {
       city => categories.foreach { case (id, name) => events = events ++ getEventsOfCategory(id, name, Map("country"-> "in", "city"-> city, "fields"-> "photo_url,photo_count,timezone,duration,fee"))}

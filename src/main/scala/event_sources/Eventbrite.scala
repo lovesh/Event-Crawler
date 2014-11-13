@@ -8,21 +8,21 @@ import org.json4s.jackson.JsonMethods._
 import com.github.nscala_time.time.Imports._
 
 
-private case class EventbriteVenue (
+case class EventbriteVenue (
         address: Option[Map[String, String]],
         name: String,
         longitude: Option[String],
         latitude: Option[String]
         )
 
-private case class EventbriteTicket (
+case class EventbriteTicket (
       name: String,
       description: String,
       free: Boolean,
       cost: Option[Map[String, Any]]
       )
 
-private case class EventbriteEvent (
+case class EventbriteEvent (
       id: String,
       name: Map[String, String],
       description: Map[String, String],
@@ -41,7 +41,7 @@ private case class EventbriteEvent (
 class Eventbrite extends EventSource {
   val sourceNo = 5
   val `type` = Constants.Source.API
-  val baseUrl = "https://www.eventbriteapi.com/v3"
+  val baseUrl = new URL("https://www.eventbriteapi.com/v3")
   val categoryUrl = new URL("https://www.eventbriteapi.com/v3/categories")
   val eventSearchUrl = new URL("https://www.eventbriteapi.com/v3/events/search")
   val authToken = Constants.SourceAuth.eventbriteToken
@@ -60,7 +60,10 @@ class Eventbrite extends EventSource {
 
   def getAllCategories(): List[String] = {
     val url = getRequestUrl(categoryUrl)
-    val resp = HTTPRequest.get(url)
+    // have to send `application/json` as headers otherwise the api sends an html response
+    val resp = HTTPRequest.get(url, headers = Map("Accept"-> "application/json"))
+    println(url)
+    //println(resp.body)
     val json = parse(resp.body)
     val results = json \ "categories"
     for {
@@ -85,7 +88,9 @@ class Eventbrite extends EventSource {
 
   def getEventsOfCategory(catId: String, filters: Map[String, String] = Map()): List[Map[String, Any]] = {
     val url = getRequestUrl(eventSearchUrl, Map("categories"-> catId) ++ filters)
-    val json = HTTPRequest.getJSON(url)
+    // have to send `application/json` as headers otherwise the api sends an html response
+    val headers = Map("Accept"-> "application/json")
+    val json = HTTPRequest.getJSON(url, headers = headers)
     val results = json \ "events"
     var events = getEventsFromSearchPage(json)
     var (page_number, page_count) = getPaginationData(json)
@@ -93,10 +98,12 @@ class Eventbrite extends EventSource {
     while (page_number < page_count) {
       page_number += 1
       val url = getRequestUrl(eventSearchUrl, Map("categories"-> catId, "page"-> page_number.toString) ++ filters)
-      val json = HTTPRequest.getJSON(url)
+      val json = HTTPRequest.getJSON(url, headers=headers)
       events ++= getEventsFromSearchPage(json)
       page_count = getPaginationData(json)._2
     }
+
+    println("Got %d events for cat id %s".format(events.size, catId))
 
     events map {event =>
       (Map[String, Any]() /: event.getClass.getDeclaredFields) {(a, f) =>
@@ -112,6 +119,7 @@ class Eventbrite extends EventSource {
 
   def getRawEvents(args: Any*): List[Map[String, Any]] = {
     val categories = getAllCategories()
+    println("Got %d categories".format(categories.size))
     var events = List[Map[String, Any]]()
     val filters = Map(
       "venue.country"-> "IN",

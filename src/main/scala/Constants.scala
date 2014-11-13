@@ -10,9 +10,10 @@ object Constants {
   }
 
   object SourceAuth {
+    // should be in separate file included in .gitignore but whatever
     val eventfulAppKey = "6Cg389qxws592QDW"
     val meetupApiKey = "293d561751234385640366c12221e41"
-    val eventbriteToken = "226ML7PF3QWT7X6WH2W4"
+    val eventbriteToken = "WCKIMHBTNTLSCLUDGQ64"
   }
 
   object eventDBConfig {

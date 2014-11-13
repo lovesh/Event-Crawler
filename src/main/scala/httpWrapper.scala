@@ -30,23 +30,23 @@ object HTTPRequest {
 			HTTPResponse(request.responseCode, "", request.getUrl)
 	}
 	
-	def get(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map()): HTTPResponse = {
+	def get(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map(), headers: Map[String, String] = Map()): HTTPResponse = {
 		val optionList = makeOptionList(options)
     val requestParams = params map { case (k,v) => (k, v.toString)}
-		val request: Http.Request = Http(url.toString).options(optionList).params(requestParams)
+		val request: Http.Request = Http(url.toString).options(optionList).params(requestParams).headers(headers)
 		makeResponse(request)
 	}
 	
-	def post(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map()): HTTPResponse = {
+	def post(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map(), headers: Map[String, String] = Map()): HTTPResponse = {
 		val optionList = makeOptionList(options)
     val requestParams = params map { case (k,v) => (k, v.toString)}
-		val request: Http.Request = Http.post(url.toString).options(optionList).params(requestParams)
+		val request: Http.Request = Http.post(url.toString).options(optionList).params(requestParams).headers(headers)
 		makeResponse(request)
 	}
 
-  def getJSON(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map()): JValue = {
+  def getJSON(url: URL, params: Map[String, Any] = Map(), options: Map[String, Any] = Map(), headers: Map[String, String] = Map()): JValue = {
     implicit val formats = DefaultFormats
-    val response = get(url, params, options)
+    val response = get(url, params, options, headers)
     parse(response.body)
   }
 	

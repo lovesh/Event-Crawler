@@ -9,6 +9,7 @@ case class Currency(name: String, code: String, symbol: String)
 //case class Location(name: String, city: String, country: String, latitude: Double, longitude: Double)
 
 case class NormalizedEvent(fields: Map[String, Any]) {
+  // This is the event object that the app is going to act on
   val title = fields("title").asInstanceOf[String]
   val description = fields("description").asInstanceOf[String]
   val created_at = fields("created_at").asInstanceOf[DateTime]

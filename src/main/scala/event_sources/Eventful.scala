@@ -146,11 +146,13 @@ class Eventful extends EventSource {
         val json = parse(HTTPRequest.get(url).body)
         events = events :+ getEventDetailFromEventPage(json)
     }
+    println("Got %d events for cat id %s".format(events.size, catId))
     events
   }
 
   def getRawEvents(args: Any*): List[Map[String, Any]] = {
     val categories = getAllCategories()
+    println("Got %d categories".format(categories.size))
     var events = List[Map[String, Any]]()
     categories.foreach { case (id, name) => events = events ++ getEventsOfCategory(id)}
     events
